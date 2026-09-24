@@ -1,398 +1,294 @@
 # SENTINEL — Real-Time Stock Market Sentiment Dashboard
 
-> **Combining Financial News, Reddit Sentiment, and Market Price Data for Real-Time Financial Analytics**
+**SENTINEL** is a Python + Streamlit stock intelligence dashboard that combines market-price data with sentiment extracted from financial news and Reddit discussions.
 
-SENTINEL is a real-time financial analytics dashboard built with **Python and Streamlit** that combines stock market data, financial news, and Reddit discussions to generate weighted market sentiment signals.
+> **Important:** The dashboard is an analytics/education project, not a financial-advice system. Its BUY/HOLD/SELL labels are rule-based sentiment signals, not investment recommendations.
 
-The system applies **NLP-based sentiment analysis using TextBlob**, incorporates **recency and engagement weighting**, combines news and social sentiment, and provides an interactive dashboard for analyzing stock price movements, technical indicators, sentiment trends, and market signals.
+## Project Overview
 
----
+**Project title:** Real-Time Stock Market Sentiment Dashboard — Combine News + Social Media Sentiment with Live Price Data
 
-## 🚀 Features
+**Domain:** Data Science · NLP · Sentiment Analysis · Financial Analytics · Data Visualization · Streamlit
 
-* 📈 Real-time/near-real-time stock market data
-* 📰 Financial news sentiment analysis
-* 💬 Reddit social sentiment analysis
-* 🧠 NLP-based sentiment analysis using TextBlob
-* ⚖️ Weighted combination of news and Reddit sentiment
-* ⏱️ Recency-based sentiment weighting
-* 🔥 Reddit engagement-based weighting
-* 📊 Interactive stock price and volume charts
-* 📉 RSI, MA20 and MA50 technical indicators
-* 📈 Historical sentiment tracking
-* 🔄 Automatic dashboard refresh
-* 🗄️ SQLite-based local sentiment history and caching
-* 📊 Multi-stock comparison
-* 🟢 BUY / 🟡 HOLD / 🔴 SELL sentiment signals
-* 📰 Google News RSS fallback when NewsAPI data is unavailable
+The application:
+- Retrieves stock price and volume history with `yfinance`.
+- Retrieves financial news through NewsAPI, with Google News RSS as a fallback.
+- Retrieves recent posts from selected Reddit communities.
+- Calculates text polarity with TextBlob.
+- Applies recency weighting to news and Reddit sentiment.
+- Applies an engagement weighting to Reddit posts using Reddit score/upvotes.
+- Combines news and Reddit sentiment using a 60% / 40% weighting when both sources are available.
+- Stores sentiment history and cached news/Reddit records in SQLite.
+- Refreshes the Streamlit application every 60 seconds.
+- Displays price charts, normalized comparisons, volume, RSI, sentiment distributions, historical sentiment, and source-level data.
 
----
-
-## 🧠 How It Works
-
-SENTINEL follows a multi-source financial sentiment analysis pipeline:
+## Architecture
 
 ```text
-                    ┌──────────────────┐
-                    │   Stock Symbol   │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-              ▼                             ▼
-      ┌───────────────┐             ┌────────────────┐
-      │ Market Data   │             │ News + Reddit  │
-      │   yFinance    │             │    Sources     │
-      └───────┬───────┘             └───────┬────────┘
-              │                             │
-              │                      ┌──────┴──────┐
-              │                      │             │
-              │                      ▼             ▼
-              │                  NewsAPI       Reddit
-              │                  / RSS
-              │                      │             │
-              │                      └──────┬──────┘
-              │                             │
-              │                             ▼
-              │                    ┌─────────────────┐
-              │                    │ NLP Sentiment   │
-              │                    │    TextBlob     │
-              │                    └────────┬────────┘
-              │                             │
-              │                   Recency + Engagement
-              │                       Weighting
-              │                             │
-              └──────────────┬──────────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ Sentiment Fusion │
-                    │  News 60% +       │
-                    │  Reddit 40%       │
-                    └────────┬─────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ BUY / HOLD / SELL│
-                    └────────┬─────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ Streamlit        │
-                    │ Dashboard        │
-                    └──────────────────┘
+                     ┌─────────────────────┐
+                     │      Streamlit      │
+                     │     Dashboard UI    │
+                     └──────────┬──────────┘
+                                │
+           ┌────────────────────┼─────────────────────┐
+           │                    │                     │
+           ▼                    ▼                     ▼
+      Yahoo Finance          NewsAPI              Reddit
+      (yfinance)         Google News RSS       public JSON API
+           │                    │                     │
+           └──────────────┬─────┴─────────────────────┘
+                          ▼
+                 TextBlob Sentiment
+                          │
+                Recency / engagement
+                       weighting
+                          │
+                News + Reddit fusion
+                     (60 / 40)
+                          │
+             ┌────────────┴────────────┐
+             ▼                         ▼
+      Sentiment signal            SQLite DB
+       BUY/HOLD/SELL          history + cache
+             │
+             ▼
+         Dashboard
 ```
 
----
+## Main Features
 
-## 🛠️ Tech Stack
+### 1. Market Data
+- Supports up to 5 stock symbols.
+- Configurable periods: 1M, 3M, 6M, 1Y, 2Y.
+- Current/latest downloaded close price and previous-period change.
+- Normalized multi-symbol comparison.
+- Single-symbol price chart with MA20 and MA50.
+- Volume visualization.
+- RSI (14) visualization.
 
-### Programming Language
+### 2. Financial News Sentiment
+Primary source:
+- NewsAPI
 
-* Python
+Fallback:
+- Google News RSS
 
-### Framework
+For each article, the application:
+1. Combines title and description.
+2. Calculates TextBlob polarity.
+3. Removes duplicate titles.
+4. Classifies sentiment:
+   - Positive: polarity > 0.05
+   - Neutral: -0.05 to +0.05
+   - Negative: polarity < -0.05
+5. Applies a recency-decay weight.
 
-* Streamlit
+### 3. Reddit Sentiment
+The application searches:
+- r/wallstreetbets
+- r/stocks
+- r/investing
 
-### Data & Finance
+It combines post title + body, calculates TextBlob polarity, and weights the result using:
+- post age
+- Reddit score/upvotes
 
-* yFinance
-* Pandas
-* NumPy
+### 4. Combined Sentiment
 
-### NLP & Sentiment Analysis
+When both sources are available:
 
-* TextBlob
+`Combined Score = 0.60 × News Score + 0.40 × Reddit Score`
 
-### News & Social Data
+If only one source is available, the available source is used directly.
 
-* NewsAPI
-* Google News RSS
-* Reddit public JSON endpoints
+Signal thresholds implemented in the source code:
 
-### Visualization
+| Sentiment score | Label |
+|---:|---|
+| > +0.10 | BUY |
+| -0.10 to +0.10 | HOLD |
+| < -0.10 | SELL |
 
-* Matplotlib
-* Streamlit charts
+These labels are **rule-based project signals**, not validated trading recommendations.
 
-### Database
+## Technology Stack
 
-* SQLite
+| Area | Technology |
+|---|---|
+| Language | Python |
+| Dashboard | Streamlit |
+| Market data | yfinance |
+| News | NewsAPI + Google News RSS fallback |
+| Social data | Reddit public JSON endpoints |
+| NLP | TextBlob |
+| Data processing | Pandas |
+| Visualization | Matplotlib |
+| Database | SQLite |
+| HTTP | Requests |
+| HTML/XML parsing | BeautifulSoup + lxml |
+| Time zones | pytz |
+| Auto-refresh | streamlit-autorefresh |
 
-### Other Libraries
-
-* Requests
-* BeautifulSoup
-* lxml
-* pytz
-* Streamlit Autorefresh
-
----
-
-## 📊 Sentiment Methodology
-
-### News Sentiment
-
-Financial news articles are processed using TextBlob polarity scores.
-
-The system considers:
-
-* Article sentiment
-* Article recency
-* Duplicate headlines
-
-More recent articles receive greater importance through recency weighting.
-
-### Reddit Sentiment
-
-Reddit posts are collected from:
-
-* `r/wallstreetbets`
-* `r/stocks`
-* `r/investing`
-
-Reddit sentiment considers:
-
-* Text polarity
-* Post age
-* Reddit engagement/score
-
-This provides an additional social sentiment signal alongside financial news.
-
----
-
-## ⚖️ Sentiment Fusion
-
-When both news and Reddit sentiment are available, the combined sentiment score uses:
+## Project Structure
 
 ```text
-Combined Sentiment =
-    60% News Sentiment
-  + 40% Reddit Sentiment
+SENTINEL/
+├── app.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── README.md
+└── LICENSE
 ```
 
-The resulting score is converted into a market sentiment signal.
+Local runtime files are intentionally not committed:
+- `sentinel_dashboard.db`
+- other `*.db` / SQLite files
+- `sentiment_history*.json`
+- `.env`
 
-### Signal Thresholds
-
-| Sentiment Score    | Signal |
-| ------------------ | ------ |
-| Greater than +0.10 | BUY    |
-| -0.10 to +0.10     | HOLD   |
-| Less than -0.10    | SELL   |
-
-These signals are intended as **analytics indicators**, not financial advice or guaranteed trading predictions.
-
----
-
-## 📈 Technical Analysis
-
-The dashboard also provides market indicators including:
-
-* Current stock price
-* Price change
-* Trading volume
-* Moving Average 20 (MA20)
-* Moving Average 50 (MA50)
-* Relative Strength Index (RSI 14)
-* Historical price movement
-
-These indicators are presented alongside sentiment data to provide broader market context.
-
----
-
-## 🗄️ Data Storage
-
-SENTINEL uses SQLite for local storage.
-
-The application maintains tables for:
-
-* Historical sentiment
-* News cache
-* Reddit cache
-
-This allows sentiment history and retrieved data to be reused within the application.
-
----
-
-## 🔑 API Key Configuration
-
-This project requires a **NewsAPI API key** to retrieve financial news.
-
-For security reasons, the API key is **not included in this GitHub repository**.
-
-Create a `.env` file in the project directory:
-
-```env
-NEWS_API_KEY=your_newsapi_key_here
-```
-
-A `.env.example` file is included in the repository as a template.
-
-### Important Security Note
-
-Never commit your actual `.env` file or API key to GitHub.
-
-If an API key has previously been exposed publicly, revoke or rotate that key and generate a new one.
-
----
-
-## ⚙️ Installation
+## Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/sentinel-stock-market-sentiment-dashboard.git
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd SENTINEL
 ```
 
-### 2. Navigate to the project
+### 2. Create a virtual environment
+
+Windows:
 
 ```bash
-cd sentinel-stock-market-sentiment-dashboard
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
-### 3. Create a virtual environment
+macOS/Linux:
 
 ```bash
-python -m venv venv
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-### 4. Activate the environment
-
-#### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-#### Linux / macOS
-
-```bash
-source venv/bin/activate
-```
-
-### 5. Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 6. Configure the API key
+### 4. Configure NewsAPI
 
-Create a `.env` file:
+Copy `.env.example` to `.env` and add your own NewsAPI key.
 
-```env
-NEWS_API_KEY=your_newsapi_key_here
+```text
+NEWS_API_KEY=your_real_key_here
 ```
 
-### 7. Run the application
+Do **not** commit `.env`.
+
+### 5. Run
 
 ```bash
 streamlit run app.py
 ```
 
-The dashboard will open in your browser.
+## GitHub Security — Important
 
----
+The original uploaded source contained a hard-coded NewsAPI credential. Before publishing the project:
 
-## 📁 Project Structure
+1. **Revoke/rotate that exposed API key in NewsAPI.**
+2. Use the environment variable `NEWS_API_KEY`.
+3. Never commit `.env`.
+4. Search the repository before pushing:
+   ```bash
+   git grep -n "api_key"
+   git grep -n "NEWS_API_KEY"
+   ```
+5. If the exposed key has already been pushed to GitHub, removing it from the latest commit is not sufficient; rotate the credential.
 
-```text
-sentinel-stock-market-sentiment-dashboard/
-│
-├── app.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── LICENSE
-├── README.md
-│
-└── runtime files
-    └── sentinel_dashboard.db
-```
+The GitHub-ready `app.py` in this package has already been changed to read `NEWS_API_KEY` from the environment.
 
-Runtime-generated files such as SQLite databases and local environment files should not be committed to the repository.
+## Data Storage
 
----
+The app creates a SQLite database named:
 
-## 🔄 Dashboard Workflow
+`sentinel_dashboard.db`
 
-1. Select one or more stock symbols.
-2. Retrieve historical market data.
-3. Retrieve financial news.
-4. Retrieve Reddit discussions.
-5. Perform NLP sentiment analysis.
-6. Apply recency weighting.
-7. Apply Reddit engagement weighting.
-8. Combine news and social sentiment.
-9. Generate sentiment signals.
-10. Display price, volume, technical indicators and sentiment trends.
-11. Store historical sentiment locally.
+Tables:
+- `sentiment_history`
+- `news_cache`
+- `reddit_cache`
 
----
+The database is local application state and is excluded from Git through `.gitignore`.
 
-## 📌 Example Use Cases
+## Data & Model Methodology
 
-SENTINEL can be used for:
+### TextBlob polarity
 
-* Financial sentiment analysis
-* NLP experimentation
-* Stock market data visualization
-* Social media sentiment research
-* News analytics
-* Financial data science projects
-* Interactive Streamlit dashboards
-* Demonstrating API integration
-* Demonstrating data pipelines
+TextBlob returns a polarity score in the range approximately from -1 to +1.
 
----
+The project uses:
+- Positive > 0.05
+- Neutral between -0.05 and +0.05
+- Negative < -0.05
 
-## ⚠️ Limitations
+### News recency weighting
 
-* Market data availability depends on the external data provider.
-* NewsAPI usage depends on API availability and account limits.
-* Reddit data depends on public endpoint availability.
-* TextBlob provides general-purpose sentiment analysis and may not fully understand financial terminology.
-* Sentiment signals should not be interpreted as guaranteed stock-price predictions.
-* The project does not currently contain a trained machine-learning model for stock-price prediction.
-* The dashboard is intended for educational and analytical purposes.
+News weight follows an exponential half-life style decay:
 
----
+`weight = max(0.5 ** (hours_old / 24), 0.1)`
 
-## 🔮 Future Enhancements
+Thus, older articles receive less influence, with a minimum weight of 0.1.
 
-Potential future improvements include:
+### Reddit weighting
 
-* Financial-domain NLP models such as FinBERT
-* Transformer-based sentiment analysis
-* Real-time streaming infrastructure
-* Additional social media sources
-* Advanced stock-price prediction models
-* Machine-learning-based signal generation
-* Backtesting framework
-* Portfolio-level sentiment analysis
-* SHAP-based model explainability
-* Cloud deployment
-* User authentication
-* PostgreSQL or other production database
-* Docker containerization
+Reddit sentiment uses the same time-decay concept and multiplies it by an engagement factor based on post score.
 
----
+### Technical indicators
 
-## 👨‍💻 Author
+The dashboard calculates:
+- MA20
+- MA50
+- RSI(14)
 
-**Rohan Lawrence**
+These indicators are visualized alongside the sentiment information. They are not used by the current code to calculate the BUY/HOLD/SELL signal.
 
-BE — Data Science Engineering
+## Current Scope & Limitations
 
-PES Institute of Technology and Management
+- The current source uses TextBlob rather than a finance-specific transformer such as FinBERT.
+- The current sentiment signal is rule-based and is not trained or statistically validated as a trading strategy.
+- NewsAPI is the primary news provider; Google News RSS is used as a fallback.
+- Reddit is queried through public JSON endpoints; availability/rate limits can change.
+- The code refreshes the dashboard every 60 seconds, but `yfinance` downloads market data rather than providing a guaranteed exchange-grade real-time feed.
+- The dashboard does not currently contain a backtested trading strategy or predictive model.
+- Sentiment does not prove that sentiment caused a price movement.
+- API availability and third-party source policies can affect results.
 
----
+## Suggested Future Enhancements
 
-## 📜 License
+- Replace TextBlob with FinBERT or another finance-specific transformer.
+- Add sentiment confidence scores.
+- Add historical price/sentiment correlation analysis.
+- Add a formal backtesting module.
+- Add model evaluation metrics for any predictive model.
+- Add stronger API error handling and rate-limit handling.
+- Add a proper Reddit API integration where appropriate.
+- Add PostgreSQL for multi-user/deployed environments.
+- Add Docker support.
+- Add automated tests and CI/CD.
+- Add authentication for private deployments.
 
-This project is licensed under the MIT License.
+## Resume / LinkedIn Description
 
----
+**Real-Time Stock Market Sentiment Dashboard**
+- Developed a Streamlit-based financial analytics dashboard integrating stock market data, financial news, and Reddit discussions.
+- Implemented NLP-based sentiment analysis using TextBlob with recency and engagement weighting.
+- Designed a 60:40 news-to-Reddit sentiment fusion score with configurable BUY/HOLD/SELL thresholds.
+- Built interactive market visualizations including price trends, moving averages, volume, RSI, sentiment distribution, and historical sentiment tracking.
+- Implemented SQLite persistence for sentiment history and source-level cache data with automatic dashboard refresh.
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-SENTINEL is an educational and analytical software project. The BUY, HOLD, and SELL signals generated by the application are based on sentiment scoring rules and should not be considered financial advice, investment recommendations, or guaranteed predictions of future market movements.
+This project is for educational and analytical purposes. It is not financial advice, does not guarantee market outcomes, and should not be used as the sole basis for investment decisions.
